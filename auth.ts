@@ -38,14 +38,14 @@ export const {
   callbacks: {
     async signIn({ user, account }) {
       // Allow OAuth without email verification
-      // if (account?.provider !== "credentials") return true;
+      if (account?.provider !== "credentials") return true;
       console.log(user, "user");
 
-      // if (!user.id) return false;
-      // const existingUser = await getUserById(user.id);
+      if (!user.id) return false;
+      const existingUser = await getUserById(user.id);
 
-      // // Prevent sign in without email verification
-      // if (!existingUser?.emailVerified) return false;
+      // Prevent sign in without email verification
+      if (!existingUser?.emailVerified) return false;
 
       //     if (existingUser.isTwoFactorEnabled) {
       //       const twoFactorConfirmation = await getTwoFactorConfirmationByUserId(existingUser.id);
