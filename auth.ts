@@ -6,13 +6,15 @@ import { db } from "@/lib/db";
 import authConfig from "@/auth.config";
 import { getUserById } from "@/data/user";
 import { UserRole } from "@prisma/client";
-// import { getTwoFactorConfirmationByUserId } from "@/data/two-factor-confirmation";
-// import { getAccountByUserId } from "./data/account";
+import { getAccountByUserId } from "@/data/account";
+import { getTwoFactorConfirmationByUserId } from "@/data/two-factor-confirmation";
 
 declare module "next-auth" {
   interface User {
     /** The user's postal address. */
     role: UserRole;
+    isTwoFactorEnabled: boolean;
+    isOAuth: boolean;
   }
 }
 
@@ -47,16 +49,18 @@ export const {
       // Prevent sign in without email verification
       if (!existingUser?.emailVerified) return false;
 
-      //     if (existingUser.isTwoFactorEnabled) {
-      //       const twoFactorConfirmation = await getTwoFactorConfirmationByUserId(existingUser.id);
+      if (existingUser.isTwoFactorEnabled) {
+        const twoFactorConfirmation = await getTwoFactorConfirmationByUserId(
+          existingUser.id
+        );
 
-      //       if (!twoFactorConfirmation) return false;
+        if (!twoFactorConfirmation) return false;
 
-      //       // Delete two factor confirmation for next sign in
-      //       await db.twoFactorConfirmation.delete({
-      //         where: { id: twoFactorConfirmation.id }
-      //       });
-      //     }
+        // Delete two factor confirmation for next sign in
+        await db.twoFactorConfirmation.delete({
+          where: { id: twoFactorConfirmation.id },
+        });
+      }
 
       return true;
     },
@@ -70,14 +74,14 @@ export const {
       }
       // console.log(session, "session here");
 
-      // if (session.user) {
-      //   session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
-      // }
+      if (session.user) {
+        session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
+      }
 
       if (session.user) {
         session.user.name = token.name;
         // session.user.email = token.email;
-        //   session.user.isOAuth = token.isOAuth as boolean;
+        session.user.isOAuth = token.isOAuth as boolean;
       }
 
       return session;
@@ -86,18 +90,17 @@ export const {
       if (!token.sub) return token;
 
       if (!user) return token;
+      if (!user.id) return token;
 
       // console.log(token);
 
-      // const existingAccount = await getAccountByUserId(
-      //   existingUser.id
-      // );
+      const existingAccount = await getAccountByUserId(user.id);
 
-      // token.isOAuth = !!existingAccount;
+      token.isOAuth = !!existingAccount;
       token.name = user.name;
       token.email = user.email;
       token.role = user.role;
-      // token.isTwoFactorEnabled = user.isTwoFactorEnabled;
+      token.isTwoFactorEnabled = user.isTwoFactorEnabled;
 
       return token;
     },
